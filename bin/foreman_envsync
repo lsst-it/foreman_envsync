@@ -49,6 +49,6 @@ res = RestClient::Request.execute(
 ps_envs = JSON.parse(res)["environments"].keys
 
 if options[:verbose]
-  puts "found #{ps_envs.count} puppetserver environment(s):"
-  ps_envs.each { |e| puts "  - #{e}" }
+  puts "found #{ps_envs.count} puppetserver environment(s)."
+  puts YAML.dump(ps_envs)
 end
