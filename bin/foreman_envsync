@@ -74,3 +74,13 @@ if options[:verbose]
   puts "found #{f_envs.count} foreman environment(s)."
   puts YAML.dump(f_envs) if f_envs.count
 end
+
+#
+# Does foreman have any puppet envs puppetserver is unaware of?
+#
+extra_envs = f_envs - ps_envs
+
+if options[:verbose]
+  puts "found #{extra_envs.count} foreman environment(s) unknown to puppetserver."
+  puts YAML.dump(extra_envs) if f_envs.count
+end
