@@ -1,9 +1,27 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require "optparse"
 require "rest-client"
 require "socket"
 require "yaml"
+
+options = {}
+option_parser = OptionParser.new do |opts|
+  opts.banner = "Usage: foreman_envsync [options]"
+  opts.separator ""
+  opts.separator "Specifc options:"
+
+  opts.on("-v", "--verbose", "Enable verbose output") do |o|
+    options[:verbose] = [o]
+  end
+
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
+end
+option_parser.parse!
 
 hostname = Socket.gethostname
 
@@ -29,4 +47,7 @@ res = RestClient::Request.execute(
 
 ps_envs = YAML.safe_load(res)["environments"].keys
 
-pp ps_envs
+if options[:verbose]
+  puts "found #{ps_envs.count} puppetserver environment(s):"
+  ps_envs.each { |e| puts "  - #{e}" }
+end
