@@ -73,9 +73,24 @@ def foreman_env_delete(name)
   hammer_cmd_parse(cmd)
 end
 
+def foreman_env_create(name, location_ids, org_ids)
+  cmd = "hammer --output=json puppet-environment create --name #{name}"
+  cmd += " --location-ids #{location_ids.join(",")}"
+  cmd += " --organization-ids #{org_ids.join(",")}"
+
+  hammer_cmd_parse(cmd)
+end
+
 def foreman_location_ids
   field = "Id"
   cmd = "hammer --output=json location list --fields #{field}"
+
+  hammer_cmd_parse_one(cmd, field)
+end
+
+def foreman_org_ids
+  field = "Id"
+  cmd = "hammer --output=json organization list --fields #{field}"
 
   hammer_cmd_parse_one(cmd, field)
 end
@@ -116,7 +131,7 @@ f_envs = foreman_env_list
 
 if options[:verbose] && !f_envs.nil?
   puts "found #{f_envs.count} foreman environment(s)."
-  puts YAML.dump(f_envs) unless report.empty?
+  puts YAML.dump(f_envs) unless f_envs.empty?
   puts
 end
 
@@ -127,7 +142,7 @@ extra_envs = f_envs - ps_envs
 
 if options[:verbose] && !extra_envs.nil?
   puts "found #{extra_envs.count} foreman environment(s) unknown to puppetserver."
-  puts YAML.dump(extra_envs) unless report.empty?
+  puts YAML.dump(extra_envs) unless f_envs.empty?
   puts
 end
 
@@ -152,5 +167,32 @@ new_envs = ps_envs - f_envs
 if options[:verbose] && !new_envs.nil?
   puts "found #{new_envs.count} puppetserver environment(s) unknown to foreman."
   puts YAML.dump(new_envs) unless new_envs.empty?
+  puts
+end
+
+# if not, exit
+exit 0 if new_envs.empty?
+
+#
+# Create new foreman env(s) with all existing locations and organizations
+#
+location_ids = foreman_location_ids
+if options[:verbose] && !location_ids.nil?
+  puts "found #{location_ids.count} foreman location(s)."
+  puts YAML.dump(location_ids) unless location_ids.empty?
+  puts
+end
+
+org_ids = foreman_org_ids
+if options[:verbose] && !org_ids.nil?
+  puts "found #{org_ids.count} foreman organization(s)."
+  puts YAML.dump(org_ids) unless org_ids.empty?
+  puts
+end
+
+report = new_envs.collect { |x| foreman_env_create(x, location_ids, org_ids) }
+if options[:verbose] && !report.nil?
+  puts "created #{report.count} foreman environment(s)."
+  puts YAML.dump(report) unless report.empty?
   puts
 end
