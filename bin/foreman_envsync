@@ -33,7 +33,7 @@ def key_file(file)
   OpenSSL::PKey::RSA.new(File.read(file))
 end
 
-def parse_foreman_cmd(cmd, field)
+def hammer_cmd(cmd)
   stdout, stderr, s = Open3.capture3(cmd)
   unless s.success?
     puts "command #{cmd} failed"
@@ -41,16 +41,43 @@ def parse_foreman_cmd(cmd, field)
     exit s.exitstatus
   end
 
+  stdout
+end
+
+def hammer_cmd_parse(cmd)
+  stdout = hammer_cmd(cmd)
+
+  JSON.parse(stdout)
+end
+
+def collect_one_field(data, field)
   # hammer output format is an array of hashes -- one hash per item
   # convert it to a flat array
-  JSON.parse(stdout).collect { |x| x[field] }
+  data.collect { |x| x[field] }
+end
+
+def hammer_cmd_parse_one(cmd, field)
+  collect_one_field(hammer_cmd_parse(cmd), field)
 end
 
 def foreman_env_list
   field = "Name"
   cmd = "hammer --output=json puppet-environment list --fields #{field}"
 
-  parse_foreman_cmd(cmd, field)
+  hammer_cmd_parse_one(cmd, field)
+end
+
+def foreman_env_delete(name)
+  cmd = "hammer --output=json puppet-environment delete --name #{name}"
+
+  hammer_cmd_parse(cmd)
+end
+
+def foreman_location_ids
+  field = "Id"
+  cmd = "hammer --output=json location list --fields #{field}"
+
+  hammer_cmd_parse_one(cmd, field)
 end
 
 def puppetserver_env_list
@@ -76,6 +103,7 @@ ps_envs = puppetserver_env_list
 if options[:verbose]
   puts "found #{ps_envs.count} puppetserver environment(s)."
   puts YAML.dump(ps_envs) if ps_envs.count
+  puts
 end
 
 #
@@ -89,6 +117,7 @@ f_envs = foreman_env_list
 if options[:verbose]
   puts "found #{f_envs.count} foreman environment(s)."
   puts YAML.dump(f_envs) if f_envs.count
+  puts
 end
 
 #
@@ -99,4 +128,16 @@ extra_envs = f_envs - ps_envs
 if options[:verbose]
   puts "found #{extra_envs.count} foreman environment(s) unknown to puppetserver."
   puts YAML.dump(extra_envs) if f_envs.count
+  puts
+end
+
+#
+# Remove any foreman envs unknown to puppetserver
+#
+report = extra_envs.collect { |x| foreman_env_delete(x) }
+
+if options[:verbose]
+  puts "deleted #{report.count} foreman environment(s)."
+  puts YAML.dump(report) if report.count
+  puts
 end
