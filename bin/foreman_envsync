@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require "json"
 require "optparse"
 require "rest-client"
 require "socket"
@@ -45,7 +46,7 @@ res = RestClient::Request.execute(
   ssl_ca_file: "/etc/puppetlabs/puppet/ssl/ca/ca_crt.pem"
 )
 
-ps_envs = YAML.safe_load(res)["environments"].keys
+ps_envs = JSON.parse(res)["environments"].keys
 
 if options[:verbose]
   puts "found #{ps_envs.count} puppetserver environment(s):"
