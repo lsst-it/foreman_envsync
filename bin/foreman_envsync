@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "open3"
 require "optparse"
 require "rest-client"
 require "socket"
@@ -50,5 +51,26 @@ ps_envs = JSON.parse(res)["environments"].keys
 
 if options[:verbose]
   puts "found #{ps_envs.count} puppetserver environment(s)."
-  puts YAML.dump(ps_envs)
+  puts YAML.dump(ps_envs) if ps_envs.count
+end
+
+#
+# Fetch list of puppet environments from foreman. The hammer cli is used to
+# avoid having to manage credentials.  In theory, foreman supports auth using
+# x509 similar to puppetserver but this failed when tested using both `curl` and
+# configuring hammer to use x509.
+#
+stdout, stderr, s = Open3.capture3("hammer --output=json puppet-environment list --fields name")
+unless s.success?
+  puts stderr
+  exit s.exitstatus
+end
+
+# hammer output format is an array of hashes -- one hash per puppet env
+# convert to a flat array of env names
+f_envs = JSON.parse(stdout).collect { |x| x["Name"] }
+
+if options[:verbose]
+  puts "found #{f_envs.count} foreman environment(s)."
+  puts YAML.dump(f_envs) if f_envs.count
 end
