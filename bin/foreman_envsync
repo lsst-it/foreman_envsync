@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "rest-client"
+require "socket"
+require "yaml"
+
+hostname = Socket.gethostname
+
+def cert_file(file)
+  OpenSSL::X509::Certificate.new(File.read(file))
+end
+
+def key_file(file)
+  OpenSSL::PKey::RSA.new(File.read(file))
+end
+
+#
+# Fetch list of puppet environments from puppetserver API.
+#
+res = RestClient::Request.execute(
+  method: :get,
+  url: "https://#{hostname}:8140/puppet/v3/environments",
+  ssl_client_cert: cert_file("/etc/puppetlabs/puppet/ssl/certs/#{hostname}.pem"),
+  ssl_client_key: key_file("/etc/puppetlabs/puppet/ssl/private_keys/#{hostname}.pem"),
+  verify_ssl: true,
+  ssl_ca_file: "/etc/puppetlabs/puppet/ssl/ca/ca_crt.pem"
+)
+
+ps_envs = YAML.safe_load(res)["environments"].keys
+
+pp ps_envs
