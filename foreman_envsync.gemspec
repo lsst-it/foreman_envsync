@@ -27,6 +27,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "rest-client", "~> 2.1.0"
+  spec.add_dependency "rubocop-rake"
+  spec.add_dependency "rubocop-rspec"
 
   # For more information and examples about making a new gem, checkout our
   # guide at: https://bundler.io/guides/creating_gem.html
