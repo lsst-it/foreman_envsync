@@ -1,0 +1,170 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "json"
+require "open3"
+require "optparse"
+require "rest-client"
+require "socket"
+require "yaml"
+
+@options = {}
+option_parser = OptionParser.new do |opts|
+  opts.banner = "Usage: foreman_envsync [options]"
+  opts.separator ""
+  opts.separator "Specifc options:"
+
+  opts.on("-v", "--verbose", "Enable verbose output") do |o|
+    @options[:verbose] = [o]
+  end
+
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
+end
+option_parser.parse!
+
+def verbose_list(msg, items)
+  return unless @options[:verbose] && !items.nil?
+
+  printf(msg, items.count)
+  puts
+  puts "#{YAML.dump(items)}\n" unless items.empty?
+end
+
+def cert_file(file)
+  OpenSSL::X509::Certificate.new(File.read(file))
+end
+
+def key_file(file)
+  OpenSSL::PKey::RSA.new(File.read(file))
+end
+
+def hammer_cmd(cmd)
+  stdout, stderr, s = Open3.capture3(cmd)
+  unless s.success?
+    puts "command #{cmd} failed"
+    puts stderr
+    exit s.exitstatus
+  end
+
+  stdout
+end
+
+def hammer_cmd_parse(cmd)
+  stdout = hammer_cmd(cmd)
+
+  JSON.parse(stdout)
+end
+
+def collect_one_field(data, field)
+  # hammer output format is an array of hashes -- one hash per item
+  # convert it to a flat array
+  data.collect { |x| x[field] }
+end
+
+def hammer_cmd_parse_one(cmd, field)
+  collect_one_field(hammer_cmd_parse(cmd), field)
+end
+
+def foreman_env_list
+  field = "Name"
+  cmd = "hammer --output=json puppet-environment list --fields #{field}"
+
+  hammer_cmd_parse_one(cmd, field)
+end
+
+def foreman_env_delete(name)
+  cmd = "hammer --output=json puppet-environment delete --name #{name}"
+
+  hammer_cmd_parse(cmd)
+end
+
+def foreman_env_create(name, location_ids, org_ids)
+  cmd = "hammer --output=json puppet-environment create --name #{name}"
+  cmd += " --location-ids #{location_ids.join(",")}"
+  cmd += " --organization-ids #{org_ids.join(",")}"
+
+  hammer_cmd_parse(cmd)
+end
+
+def foreman_location_ids
+  field = "Id"
+  cmd = "hammer --output=json location list --fields #{field}"
+
+  hammer_cmd_parse_one(cmd, field)
+end
+
+def foreman_org_ids
+  field = "Id"
+  cmd = "hammer --output=json organization list --fields #{field}"
+
+  hammer_cmd_parse_one(cmd, field)
+end
+
+def puppetserver_env_list
+  hostname = Socket.gethostname
+
+  res = RestClient::Request.execute(
+    method: :get,
+    url: "https://#{hostname}:8140/puppet/v3/environments",
+    ssl_client_cert: cert_file("/etc/puppetlabs/puppet/ssl/certs/#{hostname}.pem"),
+    ssl_client_key: key_file("/etc/puppetlabs/puppet/ssl/private_keys/#{hostname}.pem"),
+    verify_ssl: true,
+    ssl_ca_file: "/etc/puppetlabs/puppet/ssl/ca/ca_crt.pem"
+  )
+
+  JSON.parse(res)["environments"].keys
+end
+
+#
+# Fetch list of puppet environments from puppetserver API.
+#
+ps_envs = puppetserver_env_list
+verbose_list "found %d puppetserver environment(s).", ps_envs
+
+#
+# Fetch list of puppet environments from foreman. The hammer cli is used to
+# avoid having to manage credentials.  In theory, foreman supports auth using
+# x509 similar to puppetserver but this failed when tested using both `curl` and
+# configuring hammer to use x509.
+#
+f_envs = foreman_env_list
+verbose_list "found %d foreman environment(s).", f_envs
+
+#
+# Does foreman have any puppet envs puppetserver is unaware of?
+#
+extra_envs = f_envs - ps_envs
+verbose_list "found %d foreman environment(s) unknown to puppetserver.", extra_envs
+
+#
+# Remove any foreman envs unknown to puppetserver
+#
+report = extra_envs.collect { |x| foreman_env_delete(x) } unless extra_envs.empty?
+verbose_list "deleted %d foreman environment(s).", report
+
+# update foreman envs if anything was deleted
+f_envs = foreman_env_list unless report.nil?
+
+#
+# Does puppetserver have any envs foreman is unaware of?
+#
+new_envs = ps_envs - f_envs
+verbose_list "found %d puppetserver environment(s) unknown to foreman.", new_envs
+
+# if not, exit
+exit 0 if new_envs.empty?
+
+#
+# Create new foreman env(s) with all existing locations and organizations
+#
+location_ids = foreman_location_ids
+verbose_list "found %d foreman location(s).", location_ids
+
+org_ids = foreman_org_ids
+verbose_list "found %d foreman organization(s).", org_ids
+
+report = new_envs.collect { |x| foreman_env_create(x, location_ids, org_ids) }
+verbose_list "created %d foreman environment(s).", report
