@@ -26,11 +26,11 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "hammer_cli"
-  spec.add_dependency "hammer_cli_foreman"
-  spec.add_dependency "rest-client", "~> 2.0"
-  spec.add_dependency "rubocop-rake"
-  spec.add_dependency "rubocop-rspec"
+  spec.add_runtime_dependency "hammer_cli"
+  spec.add_runtime_dependency "hammer_cli_foreman"
+  spec.add_runtime_dependency "rest-client", "~> 2.0"
+  spec.add_development_dependency "rubocop-rake"
+  spec.add_development_dependency "rubocop-rspec"
 
   # For more information and examples about making a new gem, checkout our
   # guide at: https://bundler.io/guides/creating_gem.html
