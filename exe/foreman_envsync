@@ -52,10 +52,10 @@ def hammer_cmd(cmd, ignore_exitstatus: false)
   stdout
 end
 
-def hammer_cmd_parse(cmd)
-  stdout = hammer_cmd(cmd)
+def hammer_cmd_parse(cmd, **opt)
+  stdout = hammer_cmd(cmd, opt)
 
-  JSON.parse(stdout)
+  JSON.parse(stdout) unless stdout.empty?
 end
 
 def collect_one_field(data, field)
@@ -78,7 +78,7 @@ end
 def foreman_env_delete(name)
   cmd = "hammer --output=json puppet-environment delete --name #{name}"
 
-  hammer_cmd_parse(cmd)
+  hammer_cmd_parse(cmd, ignore_exitstatus: true)
 end
 
 def foreman_env_create(name, location_ids, org_ids)
@@ -143,7 +143,7 @@ verbose_list "found %d foreman environment(s) unknown to puppetserver.", extra_e
 # Remove any foreman envs unknown to puppetserver
 #
 report = extra_envs.collect { |x| foreman_env_delete(x) } unless extra_envs.empty?
-verbose_list "deleted %d foreman environment(s).", report
+verbose_list "deleted %d foreman environment(s).", report.compact
 
 # update foreman envs if anything was deleted
 f_envs = foreman_env_list unless report.nil?
