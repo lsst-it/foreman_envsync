@@ -30,7 +30,7 @@ def verbose_list(msg, items)
 
   printf(msg, items.count)
   puts
-  puts "#{YAML.dump(items)}\n" unless items.empty?
+  puts "#{YAML.dump(items.sort)}\n" unless items.empty?
 end
 
 def cert_file(file)
