@@ -4,6 +4,11 @@ A highly opinionated utility to sync foreman puppet environments with the set
 of environments known to a `puppetserver` instance *without* also importing the
 classes within those puppet environments.
 
+## OCI Image
+
+An OCI image containing this gem is published to docker hub as
+[`lsstit/foreman_envsync`](https://hub.docker.com/repository/docker/lsstit/foreman_envsync).
+
 
 ## The Problem
 
