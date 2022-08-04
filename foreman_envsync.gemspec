@@ -28,6 +28,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "hammer_cli"
   spec.add_runtime_dependency "hammer_cli_foreman"
+  spec.add_runtime_dependency "hammer_cli_foreman_puppet"
   spec.add_runtime_dependency "rest-client", "~> 2.0"
   spec.add_development_dependency "rubocop-rake"
   spec.add_development_dependency "rubocop-rspec"

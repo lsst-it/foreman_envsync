@@ -41,7 +41,7 @@ def key_file(file)
   OpenSSL::PKey::RSA.new(File.read(file))
 end
 
-def hammer_cmd(cmd, **opt)
+def hammer_cmd(cmd, opt = { ignore_exitstatus: false })
   stdout, stderr, s = Open3.capture3(cmd)
   unless s.success?
     puts "command #{cmd} failed"
