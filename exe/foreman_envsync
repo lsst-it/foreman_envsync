@@ -103,6 +103,14 @@ def foreman_org_ids
   hammer_cmd_parse_one(cmd, field)
 end
 
+# prefer the puppetserver 7 ca_crt.pem path
+def ssl_ca_file
+  %w[
+    /etc/puppetlabs/puppetserver/ca/ca_crt.pem
+    /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem
+  ].find { |f| File.exist?(f) }
+end
+
 def puppetserver_env_list
   hostname = Socket.gethostname
 
@@ -112,7 +120,7 @@ def puppetserver_env_list
     ssl_client_cert: cert_file("/etc/puppetlabs/puppet/ssl/certs/#{hostname}.pem"),
     ssl_client_key: key_file("/etc/puppetlabs/puppet/ssl/private_keys/#{hostname}.pem"),
     verify_ssl: true,
-    ssl_ca_file: "/etc/puppetlabs/puppet/ssl/ca/ca_crt.pem"
+    ssl_ca_file: ssl_ca_file
   )
 
   JSON.parse(res)["environments"].keys
