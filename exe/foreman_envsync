@@ -8,22 +8,24 @@ require "rest-client"
 require "socket"
 require "yaml"
 
-@options = {}
-option_parser = OptionParser.new do |opts|
-  opts.banner = "Usage: foreman_envsync [options]"
-  opts.separator ""
-  opts.separator "Specifc options:"
+def parse_options
+  @options = {}
+  option_parser = OptionParser.new do |opts|
+    opts.banner = "Usage: foreman_envsync [options]"
+    opts.separator ""
+    opts.separator "Specifc options:"
 
-  opts.on("-v", "--verbose", "Enable verbose output") do |o|
-    @options[:verbose] = [o]
-  end
+    opts.on("-v", "--verbose", "Enable verbose output") do |o|
+      @options[:verbose] = [o]
+    end
 
-  opts.on_tail("-h", "--help", "Show this message") do
-    puts opts
-    exit
+    opts.on_tail("-h", "--help", "Show this message") do
+      puts opts
+      exit
+    end
   end
+  option_parser.parse!
 end
-option_parser.parse!
 
 def verbose_list(msg, items)
   return unless @options[:verbose] && !items.nil?
@@ -126,53 +128,59 @@ def puppetserver_env_list
   JSON.parse(res)["environments"].keys
 end
 
-#
-# Fetch list of puppet environments from puppetserver API.
-#
-ps_envs = puppetserver_env_list
-verbose_list "found %d puppetserver environment(s).", ps_envs
+def main
+  parse_options
 
-#
-# Fetch list of puppet environments from foreman. The hammer cli is used to
-# avoid having to manage credentials.  In theory, foreman supports auth using
-# x509 similar to puppetserver but this failed when tested using both `curl` and
-# configuring hammer to use x509.
-#
-f_envs = foreman_env_list
-verbose_list "found %d foreman environment(s).", f_envs
+  #
+  # Fetch list of puppet environments from puppetserver API.
+  #
+  ps_envs = puppetserver_env_list
+  verbose_list "found %d puppetserver environment(s).", ps_envs
 
-#
-# Does foreman have any puppet envs puppetserver is unaware of?
-#
-extra_envs = f_envs - ps_envs
-verbose_list "found %d foreman environment(s) unknown to puppetserver.", extra_envs
+  #
+  # Fetch list of puppet environments from foreman. The hammer cli is used to
+  # avoid having to manage credentials.  In theory, foreman supports auth using
+  # x509 similar to puppetserver but this failed when tested using both `curl` and
+  # configuring hammer to use x509.
+  #
+  f_envs = foreman_env_list
+  verbose_list "found %d foreman environment(s).", f_envs
 
-#
-# Remove any foreman envs unknown to puppetserver
-#
-report = extra_envs.collect { |x| foreman_env_delete(x) } unless extra_envs.empty?
-verbose_list "deleted %d foreman environment(s).", report.nil? ? nil : report.compact
+  #
+  # Does foreman have any puppet envs puppetserver is unaware of?
+  #
+  extra_envs = f_envs - ps_envs
+  verbose_list "found %d foreman environment(s) unknown to puppetserver.", extra_envs
 
-# update foreman envs if anything was deleted
-f_envs = foreman_env_list unless report.nil?
+  #
+  # Remove any foreman envs unknown to puppetserver
+  #
+  report = extra_envs.collect { |x| foreman_env_delete(x) } unless extra_envs.empty?
+  verbose_list "deleted %d foreman environment(s).", report.nil? ? nil : report.compact
 
-#
-# Does puppetserver have any envs foreman is unaware of?
-#
-new_envs = ps_envs - f_envs
-verbose_list "found %d puppetserver environment(s) unknown to foreman.", new_envs
+  # update foreman envs if anything was deleted
+  f_envs = foreman_env_list unless report.nil?
 
-# if not, exit
-exit 0 if new_envs.empty?
+  #
+  # Does puppetserver have any envs foreman is unaware of?
+  #
+  new_envs = ps_envs - f_envs
+  verbose_list "found %d puppetserver environment(s) unknown to foreman.", new_envs
 
-#
-# Create new foreman env(s) with all existing locations and organizations
-#
-location_ids = foreman_location_ids
-verbose_list "found %d foreman location(s).", location_ids
+  # if not, exit
+  exit 0 if new_envs.empty?
 
-org_ids = foreman_org_ids
-verbose_list "found %d foreman organization(s).", org_ids
+  #
+  # Create new foreman env(s) with all existing locations and organizations
+  #
+  location_ids = foreman_location_ids
+  verbose_list "found %d foreman location(s).", location_ids
 
-report = new_envs.collect { |x| foreman_env_create(x, location_ids, org_ids) }
-verbose_list "created %d foreman environment(s).", report
+  org_ids = foreman_org_ids
+  verbose_list "found %d foreman organization(s).", org_ids
+
+  report = new_envs.collect { |x| foreman_env_create(x, location_ids, org_ids) }
+  verbose_list "created %d foreman environment(s).", report
+end
+
+main if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
