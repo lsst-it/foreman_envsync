@@ -31,8 +31,15 @@ def verbose_list(msg, items)
   return unless @options[:verbose] && !items.nil?
 
   printf(msg, items.count)
+  return if items.empty?
+
   puts
-  puts "#{YAML.dump(items.sort)}\n" unless items.empty?
+  # do not attempt to sorry Array of Hashes
+  if items.is_a?(Array) && items.first.is_a?(Hash)
+    puts "#{YAML.dump(items)}\n"
+  else
+    puts "#{YAML.dump(items.sort)}\n"
+  end
 end
 
 def cert_file(file)
