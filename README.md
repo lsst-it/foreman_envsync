@@ -7,7 +7,7 @@ classes within those puppet environments.
 ## OCI Image
 
 An OCI image containing this gem is published to docker hub as
-[`lsstit/foreman_envsync`](https://hub.docker.com/repository/docker/lsstit/foreman_envsync).
+[`ghcr.io/lsst-it/foreman_envsync`](ghcr.io/lsst-it/foreman_envsync).
 
 
 ## The Problem
