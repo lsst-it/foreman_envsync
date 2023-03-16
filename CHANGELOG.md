@@ -1,8 +1,8 @@
 # Changelog
 
-## [1.5.0](https://github.com/lsst-it/foreman_envsync/tree/1.5.0) (2023-03-15)
+## [v1.5.0](https://github.com/lsst-it/foreman_envsync/tree/v1.5.0) (2023-03-16)
 
-[Full Changelog](https://github.com/lsst-it/foreman_envsync/compare/v1.4.1...1.5.0)
+[Full Changelog](https://github.com/lsst-it/foreman_envsync/compare/v1.4.1...v1.5.0)
 
 **Implemented enhancements:**
 
